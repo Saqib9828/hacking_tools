@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Data Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        canvas {
+            margin-top: 5px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap; /* Allows items to wrap to the next line on smaller screens */
+        }
+
+        .column {
+            flex: 1; /* Each column will take equal width */
+            margin: 10px; /* Spacing between columns */
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 15px; /* Padding inside the columns */
+        }
+        #prospects{
+            color: black;
+  max-width:500px; 
+  max-height:500px;
+}
+#aspects{
+  max-width:500px; 
+  max-height:500px;
+}
+#context{
+  max-width:500px; 
+  max-height:500px;
+}
+#overview{
+  max-width:200px; 
+  max-height:200px;
+}
+    </style>
+</head>
+<body>
+    <div id="overview">
+        <h2>Overview</h2>
+        <p>File: <span id="file-name"></span>
+            Actual Class: <span id="actual-class"></span>
+            Predicted Class: <span id="predicted-class"></span>
+        </p>
+    </div>
+
+    <div class="row">
+        <div id="prospects" class="column">
+            <h2>Prospects</h2>
+            <canvas id="prospectsChart"></canvas>
+        </div>
+
+        <div id="aspects" class="column">
+            <h2>Aspects</h2>
+            <canvas id="aspectsChart"></canvas>
+        </div>
+
+        <div id="context" class="column">
+            <h2>Context</h2>
+            <p>Selected Aspect: <span id="selected-aspect">None</span></p>
+            <canvas id="contextChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const data = {
+                "File": "origin_19141__file.gz",
+                "Actual class": "emotet",
+                "Predicted class": "emotet",
+                "Major Prospects": {
+                    "emotet": 0.71,
+                    "bundlore": 0.23,
+                    "benign": 0.06,
+                },
+                "Aspects": {
+                    "emotet": {
+                        "f_SizeOfInitializedData_0": 0.64,
+                        "f_fileName_x": 0.53,
+                        "f_URLs_5": 0.39,
+                        "f_DIRs_3": 0.23,
+                        "f_emails_7": 0.18
+                    },
+                    "bundlore": {
+                        "f_ExportsList_kill_8": 0.79,
+                        "f_longWord_12": 0.36,
+                        "f_ipaddresses_x13": 0.35,
+                        "f_ImportsList_create_10": 0.29,
+                        "f_ImportsList_kill_9": 0.12
+                    },
+                    "benign": {
+                        "f_ImportList_create_1": 0.88,
+                        "f_emails_2": 0.77
+                    }
+                },
+                "Context": {
+                    "f_SizeOfInitializedData_0": {
+                        "fuzzySet1": {
+                            "emotet": 133,
+                            "bundlore": 117,
+                            "benign": 9
+                        }
+                    },
+                    "f_ExportsList_kill_8": {
+                        "fuzzySet2": {
+                            "emotet": 80,
+                            "bundlore": 95,
+                            "benign": 5
+                        }
+                    },
+                    "f_fileName_x": {
+                        "fuzzySet2": {
+                            "emotet": 90,
+                            "bundlore": 95,
+                            "benign": 9
+                        }
+                    },
+                    "f_URLs_5": {
+                        "fuzzySet2": {
+                            "emotet": 92,
+                            "bundlore": 83,
+                            "benign": 8
+                        }
+                    },
+                    "f_longWord_12": {
+                        "fuzzySet16": {
+                            "emotet": 45,
+                            "bundlore": 58,
+                            "benign": 22
+                        }
+                    },
+                    "f_ipaddresses_x13": {
+                        "fuzzySet3": {
+                            "emotet": 11,
+                            "bundlore": 60,
+                            "benign": 7
+                        }
+                    },
+                    "f_ImportList_create_1": {
+                        "fuzzySet11": {
+                            "emotet": 30,
+                            "bundlore": 45,
+                            "benign": 150
+                        }
+                    },
+                    "f_emails_2": {
+                        "fuzzySet6": {
+                            "emotet": 3,
+                            "bundlore": 5,
+                            "benign": 90
+                        }
+                    },
+                    "f_emails_7": {
+                        "fuzzySet9": {
+                            "emotet": 33,
+                            "bundlore": 4,
+                            "benign": 74
+                        }
+                    }
+                    // Additional context data can be added here
+                }
+            };
+
+            let aspectsChart, contextChart;
+
+            // Populate overview
+            document.getElementById('file-name').textContent = data.File;
+            document.getElementById('actual-class').textContent = data['Actual class'];
+            document.getElementById('predicted-class').textContent = data['Predicted class'];
+
+            // Major Prospects Chart
+            const prospectsCtx = document.getElementById('prospectsChart').getContext('2d');
+            const prospectsChart = new Chart(prospectsCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data['Major Prospects']),
+                    datasets: [{
+                        label: 'Probability',
+                        data: Object.values(data['Major Prospects']),
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    onClick: (e) => {
+                        const activePoints = prospectsChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                        if (activePoints.length > 0) {
+                            const firstPoint = activePoints[0];
+                            const label = prospectsChart.data.labels[firstPoint.index];
+                            updateAspectsChart(label);
+                        }
+                    }
+                }
+            });
+
+            // Initialize Aspects Chart with 'emotet' data
+            updateAspectsChart('emotet');
+
+            function updateAspectsChart(classLabel) {
+                const aspects = data.Aspects[classLabel];
+                const aspectLabels = Object.keys(aspects);
+                const aspectData = Object.values(aspects);
+
+                if (aspectsChart) {
+                    aspectsChart.destroy(); // Destroy the existing chart before creating a new one
+                }
+
+                const aspectsCtx = document.getElementById('aspectsChart').getContext('2d');
+                aspectsChart = new Chart(aspectsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: aspectLabels,
+                        datasets: [{
+                            label: `${classLabel} Aspects`,
+                            data: aspectData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        onClick: (e) => {
+                            const activePoints = aspectsChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                            if (activePoints.length > 0) {
+                                const firstPoint = activePoints[0];
+                                const label = aspectsChart.data.labels[firstPoint.index];
+                                updateContext(label);
+                            }
+                        }
+                    }
+                });
+            }
+
+            function updateContext(aspectLabel) {
+                const context = data.Context[aspectLabel];
+                if (!context) {
+                    document.getElementById('selected-aspect').textContent = 'No data available';
+                    return;
+                }
+
+                const fuzzySetLabel = Object.keys(context)[0];
+                const contextValues = context[fuzzySetLabel];
+
+                document.getElementById('selected-aspect').textContent = `${aspectLabel} - ${fuzzySetLabel}`;
+
+                if (contextChart) {
+                    contextChart.destroy(); // Destroy the existing chart before creating a new one
+                }
+
+                const contextCtx = document.getElementById('contextChart').getContext('2d');
+                contextChart = new Chart(contextCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(contextValues),
+                        datasets: [{
+                            label: fuzzySetLabel,
+                            data: Object.values(contextValues),
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
